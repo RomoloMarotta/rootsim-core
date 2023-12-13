@@ -84,3 +84,6 @@ extern nid_t nid;
 /// A string keeping the textual representation of the version of the core
 extern char *core_version;
 extern struct simulation_configuration global_config;
+
+/// Param to choose where to allocate memory, 1 being RAM, 0 being NVRAM
+extern int where;
