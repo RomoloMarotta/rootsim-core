@@ -66,8 +66,8 @@ extern bool lp_initialized;
 #define lp_initialized_set()
 #endif
 
-extern void lp_global_init(void);
-extern void lp_global_fini(void);
+extern void lp_global_init(int);
+extern void lp_global_fini(int);
 
-extern void lp_init(void);
-extern void lp_fini(void);
+extern void lp_init(int);
+extern void lp_fini(int);

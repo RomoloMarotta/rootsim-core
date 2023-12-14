@@ -66,6 +66,9 @@
 /// Maximum number of threads that can be supported
 #define MAX_THREADS (1 << MAX_THREADS_EXP)
 
+#define ALLOC_IN_RAM 	0
+#define ALLOC_IN_NVRAM	1
+
 /// Used to identify in a node the computing resources (threads at the moment)
 typedef unsigned rid_t;
 /// Used to identify MPI nodes in a distributed environment

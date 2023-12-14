@@ -95,7 +95,7 @@ void stats_global_time_take(enum stats_global_type this_stat)
 /**
  * @brief Initializes the stats subsystem in the node
  */
-void stats_global_init(void)
+void stats_global_init(where)
 {
 	sim_start_ts = timer_new();
 	sim_start_ts_hr = timer_hr_new();
@@ -114,7 +114,8 @@ void stats_global_init(void)
 
 	if(mem_stat_setup() < 0)
 		logger(LOG_ERROR, "Unable to extract memory statistics!");
-	stats_tmps = mm_alloc(global_config.n_threads * sizeof(*stats_tmps));
+	//stats_tmps = mm_alloc(global_config.n_threads * sizeof(*stats_tmps));
+	stats_tmps = alloc_memory(global_config.n_threads * sizeof(*stats_tmps), where);
 }
 
 /**
@@ -290,7 +291,7 @@ static void stats_file_final_write(FILE *out_f)
  * When finalizing this subsystem, the master node dumps his statistics from his temporary files onto the  final binary
  * file. Then, in a distributed setting, he receives the slaves temporary files, dumping their statistics as well.
  */
-void stats_global_fini(void)
+void stats_global_fini(int where)
 {
 	if(global_config.stats_file == NULL)
 		return;
@@ -315,7 +316,8 @@ void stats_global_fini(void)
 	for(rid_t i = 0; i < global_config.n_threads; ++i)
 		fclose(stats_tmps[i]);
 
-	mm_free(stats_tmps);
+	//mm_free(stats_tmps);
+	free_memory(stats_tmps, where);
 	fclose(stats_node_tmp);
 }
 

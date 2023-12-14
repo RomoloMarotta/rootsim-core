@@ -20,7 +20,7 @@ static __thread dyn_array(struct lp_msg *) at_gvt_list = {0};
 /**
  * @brief Initialize the message allocator thread-local data structures
  */
-void msg_allocator_init(void)
+void msg_allocator_init(int where)
 {
 	array_init(at_gvt_list);
 	array_init(free_list);
@@ -29,14 +29,18 @@ void msg_allocator_init(void)
 /**
  * @brief Finalize the message allocator thread-local data structures
  */
-void msg_allocator_fini(void)
+void msg_allocator_fini(int where)
 {
 	while(!array_is_empty(free_list))
-		mm_free(array_pop(free_list));
+		//mm_free(array_pop(free_list));
+		free_memory(array_pop(free_list), where);
+
 	array_fini(free_list);
 
 	while(!array_is_empty(at_gvt_list))
-		mm_free(array_pop(at_gvt_list));
+		//mm_free(array_pop(at_gvt_list));
+		free_memory(array_pop(at_gvt_list), where);
+
 	array_fini(at_gvt_list);
 }
 
@@ -66,12 +70,13 @@ struct lp_msg *msg_allocator_alloc(unsigned payload_size)
  * @brief Free a message
  * @param msg a pointer to the message to release
  */
-void msg_allocator_free(struct lp_msg *msg)
+void msg_allocator_free(struct lp_msg *msg, int where)
 {
 	if(likely(msg->pl_size <= MSG_PAYLOAD_BASE_SIZE))
 		array_push(free_list, msg);
 	else
-		mm_free(msg);
+		//mm_free(msg);
+		memory_free(msg, where);
 }
 
 /**
@@ -87,12 +92,12 @@ void msg_allocator_free_at_gvt(struct lp_msg *msg)
  * @brief Free the committed messages after a new GVT has been computed
  * @param current_gvt the latest value of the GVT
  */
-void msg_allocator_on_gvt(simtime_t current_gvt)
+void msg_allocator_on_gvt(simtime_t current_gvt, int where)
 {
 	for(array_count_t i = array_count(at_gvt_list); i-- > 0;) {
 		struct lp_msg *msg = array_get_at(at_gvt_list, i);
 		if(msg->dest_t < current_gvt) {
-			msg_allocator_free(msg);
+			msg_allocator_free(msg, where);
 			array_lazy_remove_at(at_gvt_list, i);
 		}
 	}

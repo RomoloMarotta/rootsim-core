@@ -14,13 +14,13 @@
 
 #include <memory.h>
 
-extern void msg_allocator_init(void);
-extern void msg_allocator_fini(void);
+extern void msg_allocator_init(int);
+extern void msg_allocator_fini(int);
 
 extern struct lp_msg *msg_allocator_alloc(unsigned payload_size);
-extern void msg_allocator_free(struct lp_msg *msg);
+extern void msg_allocator_free(struct lp_msg *msg, int);
 extern void msg_allocator_free_at_gvt(struct lp_msg *msg);
-extern void msg_allocator_on_gvt(simtime_t current_gvt);
+extern void msg_allocator_on_gvt(simtime_t current_gvt, int);
 
 static inline struct lp_msg *msg_allocator_pack(lp_id_t receiver, simtime_t timestamp, unsigned event_type,
     const void *payload, unsigned payload_size)

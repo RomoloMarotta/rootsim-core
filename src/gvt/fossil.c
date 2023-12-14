@@ -29,7 +29,7 @@ void fossil_on_gvt(simtime_t this_gvt)
  * @brief Perform fossil collection for the data structures of a certain LP
  * @param lp The LP on which to perform fossil collection
  */
-void fossil_lp_collect(struct lp_ctx *lp)
+void fossil_lp_collect(struct lp_ctx *lp, int where)
 {
 	struct process_ctx *proc_p = &lp->p;
 
@@ -46,13 +46,13 @@ void fossil_lp_collect(struct lp_ctx *lp)
 		} while(!is_msg_past(msg));
 	}
 
-	past_i = model_allocator_fossil_lp_collect(&lp->mm_state, past_i + 1);
+	past_i = model_allocator_fossil_lp_collect(&lp->mm_state, past_i + 1, where);
 
 	array_count_t k = past_i;
 	while(k--) {
 		struct lp_msg *msg = array_get_at(proc_p->p_msgs, k);
 		if(!is_msg_local_sent(msg))
-			msg_allocator_free(unmark_msg(msg));
+			msg_allocator_free(unmark_msg(msg), where);
 	}
 	array_truncate_first(proc_p->p_msgs, past_i);
 

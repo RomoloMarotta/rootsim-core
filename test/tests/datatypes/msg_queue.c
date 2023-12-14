@@ -21,10 +21,11 @@
 static atomic_uint msg_missing = 0;
 static atomic_uint msg_to_free = N_THREADS;
 
-static void msg_allocator_free(struct lp_msg *msg)
+static void msg_allocator_free(struct lp_msg *msg, int where)
 {
 	atomic_fetch_sub_explicit(&msg_to_free, 1U, memory_order_relaxed);
-	free(msg);
+	//free(msg);
+	memory_free(msg, where);
 }
 
 static test_ret_t msg_queue_test_init(__unused void *_)

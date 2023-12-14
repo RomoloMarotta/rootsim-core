@@ -57,12 +57,13 @@ bool lp_initialized;
 /**
  * @brief Initialize the global data structures for the LPs
  */
-void lp_global_init(void)
+void lp_global_init(int where)
 {
 	lid_node_first = partition_start(nid, n_nodes, lid_to_nid, 0, global_config.lps);
 	n_lps_node = partition_start(nid + 1, n_nodes, lid_to_nid, 0, global_config.lps) - lid_node_first;
 
-	lps = mm_alloc(sizeof(*lps) * n_lps_node);
+	//lps = mm_alloc(sizeof(*lps) * n_lps_node);
+	lps = alloc_memory(sizeof(*lps) * n_lps_node, where);
 	lps -= lid_node_first;
 
 	if(n_lps_node < global_config.n_threads) {
@@ -75,16 +76,17 @@ void lp_global_init(void)
 /**
  * @brief Finalize the global data structures for the LPs
  */
-void lp_global_fini(void)
+void lp_global_fini(int where)
 {
 	lps += lid_node_first;
-	mm_free(lps);
+	//mm_free(lps);
+	free_memory(lps, where);
 }
 
 /**
  * @brief Initialize the data structures of the LPs hosted in the calling thread
  */
-void lp_init(void)
+void lp_init(int where)
 {
 	lid_thread_first = partition_start(rid, global_config.n_threads, lid_to_rid, lid_node_first, n_lps_node);
 	lid_thread_end = partition_start(rid + 1, global_config.n_threads, lid_to_rid, lid_node_first, n_lps_node);
@@ -92,16 +94,16 @@ void lp_init(void)
 	for(uint64_t i = lid_thread_first; i < lid_thread_end; ++i) {
 		struct lp_ctx *lp = &lps[i];
 
-		model_allocator_lp_init(&lp->mm_state);
+		model_allocator_lp_init(&lp->mm_state, where);
 		lp->state_pointer = NULL;
 		lp->fossil_epoch = 0;
 
 		current_lp = lp;
-		lp->rng_ctx = rs_malloc(sizeof(*lp->rng_ctx));
+		lp->rng_ctx = rs_malloc(sizeof(*lp->rng_ctx), where);
 		random_lib_lp_init(i, lp->rng_ctx);
 
 		auto_ckpt_lp_init(&lp->auto_ckpt);
-		process_lp_init(lp);
+		process_lp_init(lp, where);
 		termination_lp_init(lp);
 	}
 }
@@ -109,13 +111,13 @@ void lp_init(void)
 /**
  * @brief Finalize the data structures of the LPs hosted in the calling thread
  */
-void lp_fini(void)
+void lp_fini(int where)
 {
 	for(uint64_t i = lid_thread_first; i < lid_thread_end; ++i) {
 		struct lp_ctx *lp = &lps[i];
 
-		process_lp_fini(lp);
-		model_allocator_lp_fini(&lp->mm_state);
+		process_lp_fini(lp, where);
+		model_allocator_lp_fini(&lp->mm_state, where);
 	}
 
 	current_lp = NULL;

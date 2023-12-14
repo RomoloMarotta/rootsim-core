@@ -25,4 +25,4 @@
 extern __thread unsigned fossil_epoch_current;
 
 extern void fossil_on_gvt(simtime_t current_gvt);
-extern void fossil_lp_collect(struct lp_ctx *lp);
+extern void fossil_lp_collect(struct lp_ctx *lp, int);

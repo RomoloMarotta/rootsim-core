@@ -17,15 +17,17 @@
 
 /// The messages queue of the serial runtime
 static heap_declare(struct lp_msg *) queue;
+int where;
 
 /**
  * @brief Initialize the serial simulation environment
  */
-static void serial_simulation_init(void)
+static void serial_simulation_init(int where)
 {
-	stats_global_init();
+
+	stats_global_init(where);
 	stats_init();
-	msg_allocator_init();
+	msg_allocator_init(where);
 	heap_init(queue);
 
 	lps = mm_alloc(sizeof(*lps) * global_config.lps);
@@ -38,10 +40,10 @@ static void serial_simulation_init(void)
 
 		lp->termination_t = -1;
 
-		model_allocator_lp_init(&lp->mm_state);
+		model_allocator_lp_init(&lp->mm_state, where);
 
 		current_lp = lp;
-		lp->rng_ctx = rs_malloc(sizeof(*lp->rng_ctx));
+		lp->rng_ctx = rs_malloc(sizeof(*lp->rng_ctx), where);
 		random_lib_lp_init(i, lp->rng_ctx);
 
 		lp->state_pointer = NULL;
@@ -52,7 +54,7 @@ static void serial_simulation_init(void)
 
 		common_msg_process(lp, msg);
 
-		msg_allocator_free(heap_extract(queue, msg_is_before));
+		msg_allocator_free(heap_extract(queue, msg_is_before), where);
 	}
 	lp_initialized_set();
 }
@@ -60,23 +62,24 @@ static void serial_simulation_init(void)
 /**
  * @brief Finalizes the serial simulation environment
  */
-static void serial_simulation_fini(void)
+static void serial_simulation_fini(int where)
 {
+
 	for(uint64_t i = 0; i < global_config.lps; ++i) {
 		struct lp_ctx *lp = &lps[i];
 		current_lp = lp;
 		global_config.dispatcher(i, 0, LP_FINI, NULL, 0, lp->state_pointer);
-		model_allocator_lp_fini(&lp->mm_state);
+		model_allocator_lp_fini(&lp->mm_state, where);
 	}
 
 	for(array_count_t i = 0; i < array_count(queue); ++i)
-		msg_allocator_free(array_get_at(queue, i));
+		msg_allocator_free(array_get_at(queue, i), where);
 
 	mm_free(lps);
 
 	heap_fini(queue);
-	msg_allocator_fini();
-	stats_global_fini();
+	msg_allocator_fini(where);
+	stats_global_fini(where);
 }
 
 /**
@@ -109,7 +112,7 @@ static int serial_simulation_run(void)
 			last_vt = timer_new();
 		}
 
-		msg_allocator_free(heap_extract(queue, msg_is_before));
+		msg_allocator_free(heap_extract(queue, msg_is_before), where);
 	}
 
 	stats_dump();
@@ -148,8 +151,10 @@ int serial_simulation(void)
 {
 	int ret;
 
+	where = ALLOC_IN_RAM;
+
 	logger(LOG_INFO, "Initializing serial simulation");
-	serial_simulation_init();
+	serial_simulation_init(where);
 	stats_global_time_take(STATS_GLOBAL_INIT_END);
 
 	stats_global_time_take(STATS_GLOBAL_EVENTS_START);
@@ -159,7 +164,7 @@ int serial_simulation(void)
 
 	stats_global_time_take(STATS_GLOBAL_FINI_START);
 	logger(LOG_INFO, "Finalizing simulation");
-	serial_simulation_fini();
+	serial_simulation_fini(where);
 
 	return ret;
 }

@@ -47,7 +47,7 @@ static __thread heap_declare(struct q_elem) mqp;
 /**
  * @brief Initializes the message queue at the node level
  */
-void msg_queue_global_init(void)
+void msg_queue_global_init()
 {
 	queues = mm_aligned_alloc(CACHE_LINE_SIZE, global_config.n_threads * sizeof(*queues));
 }
@@ -55,7 +55,7 @@ void msg_queue_global_init(void)
 /**
  * @brief Initializes the message queue for the current thread
  */
-void msg_queue_init(void)
+void msg_queue_init(int where)
 {
 	heap_init(mqp);
 	atomic_store_explicit(&queues[rid].list, NULL, memory_order_relaxed);
@@ -64,16 +64,16 @@ void msg_queue_init(void)
 /**
  * @brief Finalizes the message queue for the current thread
  */
-void msg_queue_fini(void)
+void msg_queue_fini(int where)
 {
 	for(array_count_t i = 0; i < heap_count(mqp); ++i)
-		msg_allocator_free(heap_items(mqp)[i].m);
+		msg_allocator_free(heap_items(mqp)[i].m, where);
 
 	heap_fini(mqp);
 
 	struct lp_msg *m = atomic_load_explicit(&queues[rid].list, memory_order_relaxed);
 	while(m != NULL) {
-		msg_allocator_free(m);
+		msg_allocator_free(m, where);
 		m = m->next;
 	}
 }

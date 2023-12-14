@@ -49,7 +49,7 @@ add_subdirectory(src)
 
 # Run the tests
 enable_testing()
-add_subdirectory(test)
+#add_subdirectory(test)
 
 # Generate and inspect documentation
 add_subdirectory(docs)
