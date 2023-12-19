@@ -1,0 +1,3 @@
+[submodule "mm-nvram"]
+	path = mm-nvram
+	url = git@github.com:HPDCS/mm-nvram.git
