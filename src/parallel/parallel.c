@@ -59,7 +59,7 @@ static void worker_thread_fini(int where)
 static thrd_ret_t THREAD_CALL_CONV parallel_thread_run(void *rid_arg)
 {
 
-	where = ALLOC_IN_RAM;
+	where = DRAM_MEM;
 	worker_thread_init((uintptr_t)rid_arg, where);
 
 	while(likely(termination_cant_end())) {
@@ -104,7 +104,7 @@ static void parallel_global_fini(memkind_const where)
 int parallel_simulation(void)
 {
 	logger(LOG_INFO, "Initializing parallel simulation");
-	where = ALLOC_IN_RAM;
+	where = DRAM_MEM;
 	parallel_global_init(where);
 	stats_global_time_take(STATS_GLOBAL_INIT_END);
 
@@ -126,7 +126,7 @@ int parallel_simulation(void)
 		thread_wait(thrs[i], NULL);
 
 	stats_global_time_take(STATS_GLOBAL_FINI_START);
-	where = ALLOC_IN_RAM;
+	where = DRAM_MEM;
 	parallel_global_fini(where);
 
 	return 0;

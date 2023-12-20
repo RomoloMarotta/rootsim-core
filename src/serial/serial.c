@@ -151,7 +151,7 @@ int serial_simulation(void)
 {
 	int ret;
 
-	where = ALLOC_IN_RAM;
+	where = DRAM_MEM;
 
 	logger(LOG_INFO, "Initializing serial simulation");
 	serial_simulation_init(where);
