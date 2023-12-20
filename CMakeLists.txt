@@ -45,7 +45,11 @@ if(WIN32)
     set(EXTRA_LIBS ${EXTRA_LIBS} psapi)
 endif()
 
+include_directories(mm-nvram/include)
+include_directories(mm-nvram/memkind-install/include)
+add_subdirectory(mm-nvram)
 add_subdirectory(src)
+
 
 # Run the tests
 enable_testing()
@@ -53,3 +57,4 @@ enable_testing()
 
 # Generate and inspect documentation
 add_subdirectory(docs)
+
