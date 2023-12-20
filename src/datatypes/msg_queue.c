@@ -47,9 +47,9 @@ static __thread heap_declare(struct q_elem) mqp;
 /**
  * @brief Initializes the message queue at the node level
  */
-void msg_queue_global_init()
+void msg_queue_global_init(memkind_const where)
 {
-	queues = mm_aligned_alloc(CACHE_LINE_SIZE, global_config.n_threads * sizeof(*queues));
+	queues = configurable_aligned_alloc(CACHE_LINE_SIZE, global_config.n_threads * sizeof(*queues), where);
 }
 
 /**
@@ -57,7 +57,7 @@ void msg_queue_global_init()
  */
 void msg_queue_init(int where)
 {
-	heap_init(mqp);
+	heap_init(mqp, where);
 	atomic_store_explicit(&queues[rid].list, NULL, memory_order_relaxed);
 }
 
@@ -81,9 +81,9 @@ void msg_queue_fini(int where)
 /**
  * @brief Finalizes the message queue at the node level
  */
-void msg_queue_global_fini(void)
+void msg_queue_global_fini(memkind_const where)
 {
-	mm_aligned_free(queues);
+	configurable_free(queues, where);
 }
 
 /**

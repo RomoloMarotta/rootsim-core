@@ -40,7 +40,7 @@ static void worker_thread_init(rid_t this_rid, int where)
 
 static void worker_thread_fini(int where)
 {
-	gvt_msg_drain();
+	gvt_msg_drain(where);
 
 	if(sync_thread_barrier()) {
 		stats_dump();
@@ -63,7 +63,7 @@ static thrd_ret_t THREAD_CALL_CONV parallel_thread_run(void *rid_arg)
 	worker_thread_init((uintptr_t)rid_arg, where);
 
 	while(likely(termination_cant_end())) {
-		mpi_remote_msg_handle();
+		mpi_remote_msg_handle(where);
 
 		unsigned i = 64;
 		while(i--)
@@ -84,19 +84,19 @@ static thrd_ret_t THREAD_CALL_CONV parallel_thread_run(void *rid_arg)
 	return THREAD_RET_SUCCESS;
 }
 
-static void parallel_global_init(int where)
+static void parallel_global_init(memkind_const where)
 {
 
 	stats_global_init(where);
 	lp_global_init(where);
-	msg_queue_global_init(); //aligned
+	msg_queue_global_init(where); ///aligned
 	termination_global_init();
 	gvt_global_init();
 }
 
-static void parallel_global_fini(int where)
+static void parallel_global_fini(memkind_const where)
 {
-	msg_queue_global_fini(); //aligned
+	msg_queue_global_fini(where); ///aligned
 	lp_global_fini(where);
 	stats_global_fini(where);
 }

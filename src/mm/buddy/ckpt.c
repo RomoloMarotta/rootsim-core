@@ -45,11 +45,11 @@
 // TODO: fix incremental checkpointing
 #ifdef ROOTSIM_INCREMENTAL
 
-struct buddy_checkpoint *checkpoint_incremental_take(const struct buddy_state *self)
+struct buddy_checkpoint *checkpoint_incremental_take(const struct buddy_state *self, int where)
 {
 	uint_fast32_t bset = bitmap_count_set(self->dirty, sizeof(self->dirty));
 
-	struct buddy_checkpoint *ret = mm_alloc(offsetof(struct buddy_checkpoint, longest) + bset * (1 << B_BLOCK_EXP));
+	struct buddy_checkpoint *ret = configurable_malloc(offsetof(struct buddy_checkpoint, longest) + bset * (1 << B_BLOCK_EXP), where);
 
 	unsigned char *ptr = ret->longest;
 	const unsigned char *src = self->longest;

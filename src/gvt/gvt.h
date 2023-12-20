@@ -21,7 +21,7 @@ extern __thread uint32_t remote_msg_received[2];
 
 extern void gvt_start_processing(void);
 extern void gvt_on_done_ctrl_msg(void);
-extern void gvt_msg_drain(void);
+extern void gvt_msg_drain(memkind_const where);
 
 static inline void gvt_remote_msg_send(struct lp_msg *msg, nid_t dest_nid)
 {

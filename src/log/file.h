@@ -15,8 +15,8 @@
 
 #include <stdio.h>
 
-void *file_memory_load(FILE *f, int64_t *f_size_p);
-FILE *file_open(const char *open_type, const char *fmt, ...);
+void *file_memory_load(FILE *f, int64_t *f_size_p, memkind_const);
+FILE *file_open(const char *open_type, const char *fmt, memkind_const where, ...);
 
 /**
  * @brief Write the content of a memory buffer in a file

@@ -17,7 +17,7 @@
 
 /// The messages queue of the serial runtime
 static heap_declare(struct lp_msg *) queue;
-int where;
+memkind_const where;
 
 /**
  * @brief Initialize the serial simulation environment
@@ -28,9 +28,9 @@ static void serial_simulation_init(int where)
 	stats_global_init(where);
 	stats_init();
 	msg_allocator_init(where);
-	heap_init(queue);
+	heap_init(queue, where);
 
-	lps = mm_alloc(sizeof(*lps) * global_config.lps);
+	lps = configurable_malloc(sizeof(*lps) * global_config.lps, where);
 	memset(lps, 0, sizeof(*lps) * global_config.lps);
 
 	n_lps_node = global_config.lps;
@@ -48,7 +48,7 @@ static void serial_simulation_init(int where)
 
 		lp->state_pointer = NULL;
 
-		struct lp_msg *msg = msg_allocator_pack(i, 0.0, LP_INIT, NULL, 0);
+		struct lp_msg *msg = msg_allocator_pack(i, 0.0, LP_INIT, NULL, 0, where);
 		msg->raw_flags = 0;
 		heap_insert(queue, msg_is_before, msg);
 
@@ -75,7 +75,7 @@ static void serial_simulation_fini(int where)
 	for(array_count_t i = 0; i < array_count(queue); ++i)
 		msg_allocator_free(array_get_at(queue, i), where);
 
-	mm_free(lps);
+	configurable_free(lps, where);
 
 	heap_fini(queue);
 	msg_allocator_fini(where);
@@ -129,9 +129,9 @@ static int serial_simulation_run(void)
  * @param payload_size size of the payload
  */
 void ScheduleNewEvent_serial(lp_id_t receiver, simtime_t timestamp, unsigned event_type, const void *payload,
-    unsigned payload_size)
+    unsigned payload_size, memkind_const where)
 {
-	struct lp_msg *msg = msg_allocator_pack(receiver, timestamp, event_type, payload, payload_size);
+	struct lp_msg *msg = msg_allocator_pack(receiver, timestamp, event_type, payload, payload_size, where);
 	msg->raw_flags = 0;
 
 #ifndef NDEBUG

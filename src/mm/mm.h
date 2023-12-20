@@ -18,6 +18,8 @@
 #include <stddef.h>
 #include <stdlib.h>
 
+#include <mm_nvram.h>
+
 /**
  * @brief A version of the stdlib aligned_alloc() used internally
  * @param alignment the requested alignment value in bytes
@@ -101,30 +103,3 @@ static inline void mm_free(void *ptr)
 
 
 
-
-static inline void *alloc_memory(size_t mem_size, int to)
-{
-	
-	void *ptr;
-
-	if (to) {
-		//do_alloc_ram
-		mm_alloc(mem_size);
-	} else {
-		//do_alloc_nvram
-	}
-
-	return ptr;
-}
-
-
-
-static inline void free_memory(void *ptr, int from)
-{
-	if (from) {
-		//do_free_from_ram
-		mm_free(ptr);
-	} else {
-		//do_free_from_nvram
-	}
-}

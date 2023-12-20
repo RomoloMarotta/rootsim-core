@@ -21,14 +21,14 @@
  * @param[out] f_size_p a pointer to a variable which will contain with the loaded file size
  * @return a mm_alloc-ed buffer filled in with the file content, or NULL if a read error happened
  */
-void *file_memory_load(FILE *f, int64_t *f_size_p)
+void *file_memory_load(FILE *f, int64_t *f_size_p, memkind_const where)
 {
 	fseek(f, 0, SEEK_END);
 	long f_size = ftell(f); // FIXME: may fail horribly for files bigger than 2 GB
 	fseek(f, 0, SEEK_SET);
-	void *ret = mm_alloc(f_size);
+	void *ret = configurable_malloc(f_size, where);
 	if(fread(ret, f_size, 1, f) != 1) {
-		mm_free(ret);
+		configurable_free(ret, where);
 		*f_size_p = 0;
 		return NULL;
 	}
@@ -42,7 +42,7 @@ void *file_memory_load(FILE *f, int64_t *f_size_p)
  * @param fmt the file name expressed as a printf style format string
  * @param ... the list of additional arguments used in @a fmt (see printf())
  */
-FILE *file_open(const char *open_type, const char *fmt, ...)
+FILE *file_open(const char *open_type, const char *fmt, memkind_const where, ...)
 {
 	va_list args, args_cp;
 	va_start(args, fmt);
@@ -51,7 +51,7 @@ FILE *file_open(const char *open_type, const char *fmt, ...)
 	size_t l = vsnprintf(NULL, 0, fmt, args_cp) + 1;
 	va_end(args_cp);
 
-	char *f_name = mm_alloc(l);
+	char *f_name = configurable_malloc(l, where);
 	vsnprintf(f_name, l, fmt, args);
 	va_end(args);
 
@@ -59,6 +59,6 @@ FILE *file_open(const char *open_type, const char *fmt, ...)
 	if(ret == NULL)
 		logger(LOG_ERROR, "Unable to open \"%s\" in %s mode", f_name, open_type);
 
-	mm_free(f_name);
+	configurable_free(f_name, where);
 	return ret;
 }

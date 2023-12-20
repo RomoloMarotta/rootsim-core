@@ -95,7 +95,7 @@ void stats_global_time_take(enum stats_global_type this_stat)
 /**
  * @brief Initializes the stats subsystem in the node
  */
-void stats_global_init(where)
+void stats_global_init(memkind_const where)
 {
 	sim_start_ts = timer_new();
 	sim_start_ts_hr = timer_hr_new();
@@ -114,8 +114,7 @@ void stats_global_init(where)
 
 	if(mem_stat_setup() < 0)
 		logger(LOG_ERROR, "Unable to extract memory statistics!");
-	//stats_tmps = mm_alloc(global_config.n_threads * sizeof(*stats_tmps));
-	stats_tmps = alloc_memory(global_config.n_threads * sizeof(*stats_tmps), where);
+	stats_tmps = configurable_malloc(global_config.n_threads * sizeof(*stats_tmps), where);
 }
 
 /**
@@ -143,24 +142,24 @@ void stats_init(void)
  * You may want to call this function with @p out_f set to NULL to flush the pending MPI communications.
  * For details about the binary file format see #stats_file_final_write().
  */
-static void stats_files_receive(FILE *out_f)
+static void stats_files_receive(FILE *out_f, memkind_const where)
 {
 	for(nid_t j = 1; j < n_nodes; ++j) {
 		int buf_size;
-		struct stats_global *sg_p = mpi_blocking_data_rcv(&buf_size, j);
+		struct stats_global *sg_p = mpi_blocking_data_rcv(&buf_size, j, where);
 		if(likely(out_f != NULL))
 			file_write_chunk(out_f, sg_p, buf_size);
 		uint64_t iters = sg_p->threads_count + 1; // +1 for node stats
-		mm_free(sg_p);
+		configurable_free(sg_p, where);
 
 		for(uint64_t i = 0; i < iters; ++i) {
-			void *buf = mpi_blocking_data_rcv(&buf_size, j);
+			void *buf = mpi_blocking_data_rcv(&buf_size, j, where);
 			int64_t f_size = buf_size;
 			if(likely(out_f != NULL)) {
 				file_write_chunk(out_f, &f_size, sizeof(f_size));
 				file_write_chunk(out_f, buf, buf_size);
 			}
-			mm_free(buf);
+			configurable_free(buf, where);
 		}
 	}
 }
@@ -168,7 +167,7 @@ static void stats_files_receive(FILE *out_f)
 /**
  * @brief Send the final statistics data of this node to the master node
  */
-static void stats_files_send(void)
+static void stats_files_send(memkind_const where)
 {
 	stats_glob_cur.max_rss = mem_stat_rss_max_get();
 	stats_glob_cur.timestamps[STATS_GLOBAL_END] = timer_value(sim_start_ts);
@@ -176,16 +175,16 @@ static void stats_files_send(void)
 	mpi_blocking_data_send(&stats_glob_cur, sizeof(stats_glob_cur), 0);
 
 	int64_t f_size;
-	void *f_buf = file_memory_load(stats_node_tmp, &f_size);
+	void *f_buf = file_memory_load(stats_node_tmp, &f_size, where);
 	f_size = min(INT_MAX, f_size);
 	mpi_blocking_data_send(f_buf, f_size, 0);
-	mm_free(f_buf);
+	configurable_free(f_buf, where);
 
 	for(rid_t i = 0; i < global_config.n_threads; ++i) {
-		f_buf = file_memory_load(stats_tmps[i], &f_size);
+		f_buf = file_memory_load(stats_tmps[i], &f_size, where);
 		f_size = min(INT_MAX, f_size);
 		mpi_blocking_data_send(f_buf, f_size, 0);
-		mm_free(f_buf);
+		configurable_free(f_buf, where);
 	}
 }
 
@@ -250,7 +249,7 @@ static void stats_files_send(void)
  * function #stats_files_receive() deals with the other nodes.
  * TODO add to the file other kind of statistics, for example ROOT-Sim config, machine hardware etc
  */
-static void stats_file_final_write(FILE *out_f)
+static void stats_file_final_write(FILE *out_f, memkind_const where)
 {
 	uint16_t endian_check = 61455U;
 	file_write_chunk(out_f, &endian_check, sizeof(endian_check));
@@ -272,16 +271,16 @@ static void stats_file_final_write(FILE *out_f)
 	file_write_chunk(out_f, &stats_glob_cur, sizeof(stats_glob_cur));
 
 	int64_t buf_size;
-	void *buf = file_memory_load(stats_node_tmp, &buf_size);
+	void *buf = file_memory_load(stats_node_tmp, &buf_size, where);
 	file_write_chunk(out_f, &buf_size, sizeof(buf_size));
 	file_write_chunk(out_f, buf, buf_size);
-	mm_free(buf);
+	configurable_free(buf, where);
 
 	for(rid_t i = 0; i < global_config.n_threads; ++i) {
-		buf = file_memory_load(stats_tmps[i], &buf_size);
+		buf = file_memory_load(stats_tmps[i], &buf_size, where);
 		file_write_chunk(out_f, &buf_size, sizeof(buf_size));
 		file_write_chunk(out_f, buf, buf_size);
-		mm_free(buf);
+		configurable_free(buf, where);
 	}
 }
 
@@ -291,7 +290,7 @@ static void stats_file_final_write(FILE *out_f)
  * When finalizing this subsystem, the master node dumps his statistics from his temporary files onto the  final binary
  * file. Then, in a distributed setting, he receives the slaves temporary files, dumping their statistics as well.
  */
-void stats_global_fini(int where)
+void stats_global_fini(memkind_const where)
 {
 	if(global_config.stats_file == NULL)
 		return;
@@ -300,15 +299,15 @@ void stats_global_fini(int where)
 	stats_glob_cur.lps_count = n_lps_node;
 
 	if(nid) {
-		stats_files_send();
+		stats_files_send(where);
 	} else {
-		FILE *o = file_open("wb", "%s.bin", global_config.stats_file);
+		FILE *o = file_open("wb", "%s.bin", where, global_config.stats_file);
 		if(unlikely(o == NULL)) {
 			logger(LOG_WARN, "Unable to open statistics file for writing, statistics won't be saved.");
-			stats_files_receive(NULL);
+			stats_files_receive(NULL, where);
 		} else {
-			stats_file_final_write(o);
-			stats_files_receive(o);
+			stats_file_final_write(o, where);
+			stats_files_receive(o, where);
 			fclose(o);
 		}
 	}
@@ -316,8 +315,7 @@ void stats_global_fini(int where)
 	for(rid_t i = 0; i < global_config.n_threads; ++i)
 		fclose(stats_tmps[i]);
 
-	//mm_free(stats_tmps);
-	free_memory(stats_tmps, where);
+	configurable_free(stats_tmps, where);
 	fclose(stats_node_tmp);
 }
 

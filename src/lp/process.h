@@ -33,7 +33,7 @@ struct process_ctx {
 
 struct lp_ctx; // forward declaration
 
-extern void process_lp_init(struct lp_ctx *lp, int);
-extern void process_lp_fini(struct lp_ctx *lp,int);
+extern void process_lp_init(struct lp_ctx *lp, memkind_const);
+extern void process_lp_fini(struct lp_ctx *lp,memkind_const);
 
-extern void process_msg(int);
+extern void process_msg(memkind_const);

@@ -38,7 +38,7 @@
  * @brief Initialize an empty heap
  * @param self the heap to initialize
  */
-#define heap_init(self) array_init(self)
+#define heap_init(self, where) array_init(self, where)
 
 /**
  * @brief Finalize a heap

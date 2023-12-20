@@ -14,18 +14,18 @@
 
 #include <memory.h>
 
-extern void msg_allocator_init(int);
-extern void msg_allocator_fini(int);
+extern void msg_allocator_init(memkind_const);
+extern void msg_allocator_fini(memkind_const);
 
-extern struct lp_msg *msg_allocator_alloc(unsigned payload_size);
-extern void msg_allocator_free(struct lp_msg *msg, int);
+extern struct lp_msg *msg_allocator_alloc(unsigned payload_size, memkind_const);
+extern void msg_allocator_free(struct lp_msg *msg, memkind_const);
 extern void msg_allocator_free_at_gvt(struct lp_msg *msg);
-extern void msg_allocator_on_gvt(simtime_t current_gvt, int);
+extern void msg_allocator_on_gvt(simtime_t current_gvt, memkind_const);
 
 static inline struct lp_msg *msg_allocator_pack(lp_id_t receiver, simtime_t timestamp, unsigned event_type,
-    const void *payload, unsigned payload_size)
+    const void *payload, unsigned payload_size, memkind_const where)
 {
-	struct lp_msg *msg = msg_allocator_alloc(payload_size);
+	struct lp_msg *msg = msg_allocator_alloc(payload_size, where);
 
 	msg->dest = receiver;
 	msg->dest_t = timestamp;

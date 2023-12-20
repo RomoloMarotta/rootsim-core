@@ -29,6 +29,7 @@ typedef uint_least32_t array_count_t;
 		type *items;                                                                                           \
 		array_count_t count;                                                                                   \
 		array_count_t capacity;                                                                                \
+		memkind_const where; 																								\
 	}
 
 /**
@@ -78,21 +79,35 @@ typedef uint_least32_t array_count_t;
 #define array_is_empty(self) (array_count(self) == 0)
 
 /**
+ * @brief Sets where the array should be allocated
+ * @param self The target dynamic array
+ * @oaram where The allocation policy 
+ */
+#define array_set_alloc_policy(self, where) (self.where == where)
+
+/**
+ * @brief Returns where the array is allocated
+ * @param self The target dynamic array
+ */
+#define array_get_alloc_policy(self) (self.where)
+
+/**
  * @brief Initializes a dynamic array
  * @param self The target dynamic array
  */
-#define array_init(self)                                                                                               \
+#define array_init(self, where)                                                                                               \
 	__extension__({                                                                                                \
 		array_capacity(self) = INIT_SIZE_ARRAY;                                                                \
-		array_items(self) = mm_alloc(array_capacity(self) * sizeof(*array_items(self)));                       \
+		array_items(self) = configurable_malloc(array_capacity(self) * sizeof(*array_items(self)), where);                       \
 		array_count(self) = 0;                                                                                 \
+		array_set_alloc_policy(self, where);																		\
 	})
 
 /**
  * @brief Releases the memory used by a dynamic array
  * @param self The target dynamic array
  */
-#define array_fini(self) __extension__({ mm_free(array_items(self)); })
+#define array_fini(self) __extension__({ configurable_free(array_items(self), self.where); })
 
 /**
  * @brief Push an element to the end of a dynamic array
@@ -169,7 +184,7 @@ typedef uint_least32_t array_count_t;
 		if(unlikely(array_count(self) > INIT_SIZE_ARRAY && array_count(self) * 3 <= array_capacity(self))) {   \
 			array_capacity(self) /= 2;                                                                     \
 			array_items(self) =                                                                            \
-			    mm_realloc(array_items(self), array_capacity(self) * sizeof(*array_items(self)));          \
+			    configurable_realloc(array_items(self), array_capacity(self) * sizeof(*array_items(self)), self.where);          \
 		}                                                                                                      \
 	})
 
@@ -186,7 +201,7 @@ typedef uint_least32_t array_count_t;
 				array_capacity(self) *= 2;                                                             \
 			} while(unlikely(tcnt >= array_capacity(self)));                                               \
 			array_items(self) =                                                                            \
-			    mm_realloc(array_items(self), array_capacity(self) * sizeof(*array_items(self)));          \
+			    configurable_realloc(array_items(self), array_capacity(self) * sizeof(*array_items(self)), self.where);          \
 		}                                                                                                      \
 	})
 
@@ -199,7 +214,7 @@ typedef uint_least32_t array_count_t;
 		if(unlikely(array_count(self) >= array_capacity(self))) {                                              \
 			array_capacity(self) *= 2;                                                                     \
 			array_items(self) =                                                                            \
-			    mm_realloc(array_items(self), array_capacity(self) * sizeof(*array_items(self)));          \
+			    configurable_realloc(array_items(self), array_capacity(self) * sizeof(*array_items(self)), self.where);          \
 		}                                                                                                      \
 	})
 

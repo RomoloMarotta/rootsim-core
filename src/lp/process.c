@@ -36,17 +36,17 @@ static __thread struct lp_msg *current_msg;
 #define unmark_msg_sent(msg_p) ((struct lp_msg *)(((uintptr_t)(msg_p)) - 1U))
 
 void ScheduleNewEvent(lp_id_t receiver, simtime_t timestamp, unsigned event_type, const void *payload,
-    unsigned payload_size)
+    unsigned payload_size, memkind_const where)
 {
 	if(unlikely(global_config.serial)) {
-		ScheduleNewEvent_serial(receiver, timestamp, event_type, payload, payload_size);
+		ScheduleNewEvent_serial(receiver, timestamp, event_type, payload, payload_size, where);
 		return;
 	}
 
 	if(unlikely(silent_processing))
 		return;
 
-	struct lp_msg *msg = msg_allocator_pack(receiver, timestamp, event_type, payload, payload_size);
+	struct lp_msg *msg = msg_allocator_pack(receiver, timestamp, event_type, payload, payload_size, where);
 
 #ifndef NDEBUG
 	msg->raw_flags = 0;
@@ -87,12 +87,12 @@ static inline void checkpoint_take(struct lp_ctx *lp, int where)
 /**
  * @brief Initializes the processing module in the current LP
  */
-void process_lp_init(struct lp_ctx *lp, int where)
+void process_lp_init(struct lp_ctx *lp, memkind_const where)
 {
-	array_init(lp->p.p_msgs);
+	array_init(lp->p.p_msgs, where);
 	lp->p.early_antis = NULL;
 
-	struct lp_msg *msg = msg_allocator_pack(lp - lps, 0, LP_INIT, NULL, 0U);
+	struct lp_msg *msg = msg_allocator_pack(lp - lps, 0, LP_INIT, NULL, 0U, where);
 	msg->raw_flags = MSG_FLAG_PROCESSED;
 #ifndef NDEBUG
 	current_msg = msg;

@@ -23,6 +23,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <mm_nvram.h>
+
 /// Simulation time data type
 typedef double simtime_t;
 
@@ -84,14 +86,14 @@ enum rootsim_event {LP_INIT = 65534, LP_FINI};
  * @param event_size The size (in bytes) of the event content
  */
 extern void ScheduleNewEvent(lp_id_t receiver, simtime_t timestamp, unsigned event_type, const void *event_content,
-    unsigned event_size);
+    unsigned event_size, memkind_const);
 
 extern void SetState(void *new_state);
 
-extern void *rs_malloc(size_t req_size, int);
-extern void *rs_calloc(size_t nmemb, size_t size, int);
+extern void *rs_malloc(size_t req_size, memkind_const);
+extern void *rs_calloc(size_t nmemb, size_t size, memkind_const);
 extern void rs_free(void *ptr);
-extern void *rs_realloc(void *ptr, size_t req_size, int);
+extern void *rs_realloc(void *ptr, size_t req_size, memkind_const);
 
 extern double Random(void);
 extern uint64_t RandomU64(void);
