@@ -17,18 +17,17 @@
 
 /// The messages queue of the serial runtime
 static heap_declare(struct lp_msg *) queue;
-memkind_const where;
 
 /**
  * @brief Initialize the serial simulation environment
  */
-static void serial_simulation_init(int where)
+static void serial_simulation_init(xram_memkind_const_t where)
 {
 
 	stats_global_init(where);
 	stats_init();
-	msg_allocator_init(where);
-	heap_init(queue, where);
+	msg_allocator_init();
+	heap_init(queue, MEMKIND_EVENTS);
 
 	lps = configurable_malloc(sizeof(*lps) * global_config.lps, where);
 	memset(lps, 0, sizeof(*lps) * global_config.lps);
@@ -40,21 +39,21 @@ static void serial_simulation_init(int where)
 
 		lp->termination_t = -1;
 
-		model_allocator_lp_init(&lp->mm_state, where);
+		model_allocator_lp_init(&lp->mm_state);
 
 		current_lp = lp;
-		lp->rng_ctx = rs_malloc(sizeof(*lp->rng_ctx), where);
+		lp->rng_ctx = rs_malloc(sizeof(*lp->rng_ctx));
 		random_lib_lp_init(i, lp->rng_ctx);
 
 		lp->state_pointer = NULL;
 
-		struct lp_msg *msg = msg_allocator_pack(i, 0.0, LP_INIT, NULL, 0, where);
+		struct lp_msg *msg = msg_allocator_pack(i, 0.0, LP_INIT, NULL, 0);
 		msg->raw_flags = 0;
 		heap_insert(queue, msg_is_before, msg);
 
 		common_msg_process(lp, msg);
 
-		msg_allocator_free(heap_extract(queue, msg_is_before), where);
+		msg_allocator_free(heap_extract(queue, msg_is_before));
 	}
 	lp_initialized_set();
 }
@@ -62,23 +61,23 @@ static void serial_simulation_init(int where)
 /**
  * @brief Finalizes the serial simulation environment
  */
-static void serial_simulation_fini(int where)
+static void serial_simulation_fini(xram_memkind_const_t where)
 {
 
 	for(uint64_t i = 0; i < global_config.lps; ++i) {
 		struct lp_ctx *lp = &lps[i];
 		current_lp = lp;
 		global_config.dispatcher(i, 0, LP_FINI, NULL, 0, lp->state_pointer);
-		model_allocator_lp_fini(&lp->mm_state, where);
+		model_allocator_lp_fini(&lp->mm_state);
 	}
 
 	for(array_count_t i = 0; i < array_count(queue); ++i)
-		msg_allocator_free(array_get_at(queue, i), where);
+		msg_allocator_free(array_get_at(queue, i));
 
 	configurable_free(lps, where);
 
 	heap_fini(queue);
-	msg_allocator_fini(where);
+	msg_allocator_fini();
 	stats_global_fini(where);
 }
 
@@ -112,7 +111,7 @@ static int serial_simulation_run(void)
 			last_vt = timer_new();
 		}
 
-		msg_allocator_free(heap_extract(queue, msg_is_before), where);
+		msg_allocator_free(heap_extract(queue, msg_is_before));
 	}
 
 	stats_dump();
@@ -129,9 +128,9 @@ static int serial_simulation_run(void)
  * @param payload_size size of the payload
  */
 void ScheduleNewEvent_serial(lp_id_t receiver, simtime_t timestamp, unsigned event_type, const void *payload,
-    unsigned payload_size, memkind_const where)
+    unsigned payload_size)
 {
-	struct lp_msg *msg = msg_allocator_pack(receiver, timestamp, event_type, payload, payload_size, where);
+	struct lp_msg *msg = msg_allocator_pack(receiver, timestamp, event_type, payload, payload_size);
 	msg->raw_flags = 0;
 
 #ifndef NDEBUG
@@ -151,10 +150,8 @@ int serial_simulation(void)
 {
 	int ret;
 
-	where = DRAM_MEM;
-
 	logger(LOG_INFO, "Initializing serial simulation");
-	serial_simulation_init(where);
+	serial_simulation_init(MEMKIND_LPMETA);
 	stats_global_time_take(STATS_GLOBAL_INIT_END);
 
 	stats_global_time_take(STATS_GLOBAL_EVENTS_START);
@@ -164,7 +161,7 @@ int serial_simulation(void)
 
 	stats_global_time_take(STATS_GLOBAL_FINI_START);
 	logger(LOG_INFO, "Finalizing simulation");
-	serial_simulation_fini(where);
+	serial_simulation_fini(MEMKIND_LPMETA);
 
 	return ret;
 }

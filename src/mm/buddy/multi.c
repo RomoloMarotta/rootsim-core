@@ -22,29 +22,29 @@
 #define is_log_incremental(l) false
 #endif
 
-void model_allocator_lp_init(struct mm_state *self, memkind_const where)
+void model_allocator_lp_init(struct mm_state *self)
 {
-	array_init(self->buddies, where);
-	array_init(self->logs, where);
+	array_init(self->buddies, MEMKIND_LPMETA);
+	array_init(self->logs, MEMKIND_LPMETA);
 	self->full_ckpt_size = offsetof(struct mm_checkpoint, chkps) + sizeof(struct buddy_state *);
 }
 
-void model_allocator_lp_fini(struct mm_state *self, memkind_const where)
+void model_allocator_lp_fini(struct mm_state *self)
 {
 	array_count_t i = array_count(self->logs);
 	while(i--)
-		configurable_free(array_get_at(self->logs, i).c, where);
+		configurable_free(array_get_at(self->logs, i).c, MEMKIND_LPCKPT);
 
 	array_fini(self->logs);
 
 	i = array_count(self->buddies);
 	while(i--)
-		configurable_free(array_get_at(self->buddies, i), where);
+		configurable_free(array_get_at(self->buddies, i), MEMKIND_LPSTAT);
 
 	array_fini(self->buddies);
 }
 
-void *rs_malloc(size_t req_size, memkind_const where)
+void *rs_malloc(size_t req_size)
 {
 	if(unlikely(!req_size))
 		return NULL;
@@ -66,7 +66,7 @@ void *rs_malloc(size_t req_size, memkind_const where)
 			return ret;
 	}
 
-	struct buddy_state *new_buddy = configurable_malloc(sizeof(*new_buddy), where);
+	struct buddy_state *new_buddy = configurable_malloc(sizeof(*new_buddy), MEMKIND_LPSTAT);
 	buddy_init(new_buddy);
 
 	for(i = 0; i < array_count(self->buddies); ++i)
@@ -78,10 +78,10 @@ void *rs_malloc(size_t req_size, memkind_const where)
 	return buddy_malloc(new_buddy, req_blks_exp);
 }
 
-void *rs_calloc(size_t nmemb, size_t size, memkind_const where)
+void *rs_calloc(size_t nmemb, size_t size)
 {
 	size_t tot = nmemb * size;
-	void *ret = rs_malloc(tot, where);
+	void *ret = rs_malloc(tot);
 
 	if(likely(ret))
 		memset(ret, 0, tot);
@@ -114,7 +114,7 @@ void rs_free(void *ptr)
 	self->full_ckpt_size -= buddy_free(b, ptr);
 }
 
-void *rs_realloc(void *ptr, size_t req_size, memkind_const where)
+void *rs_realloc(void *ptr, size_t req_size)
 {
 	if(!req_size) { // Adhering to C11 standard §7.20.3.1
 		if(!ptr)
@@ -122,7 +122,7 @@ void *rs_realloc(void *ptr, size_t req_size, memkind_const where)
 		return NULL;
 	}
 	if(!ptr)
-		return rs_malloc(req_size, where);
+		return rs_malloc(req_size);
 
 	struct mm_state *self = &current_lp->mm_state;
 	struct buddy_state *b = buddy_find_by_address(self, ptr);
@@ -132,7 +132,7 @@ void *rs_realloc(void *ptr, size_t req_size, memkind_const where)
 		return ptr;
 	}
 
-	void *new_buffer = rs_malloc(req_size, where);
+	void *new_buffer = rs_malloc(req_size);
 	if(unlikely(new_buffer == NULL))
 		return NULL;
 
@@ -157,9 +157,9 @@ void __write_mem(const void *ptr, size_t s)
 }
 
 // todo: incremental
-void model_allocator_checkpoint_take(struct mm_state *self, array_count_t ref_i, memkind_const where)
+void model_allocator_checkpoint_take(struct mm_state *self, array_count_t ref_i)
 {
-	struct mm_checkpoint *ckp = configurable_malloc(self->full_ckpt_size, where);
+	struct mm_checkpoint *ckp = configurable_malloc(self->full_ckpt_size, MEMKIND_LPCKPT);
 	ckp->ckpt_size = self->full_ckpt_size;
 
 	struct mm_log mm_log = {.ref_i = ref_i, .c = ckp};
@@ -178,7 +178,7 @@ void model_allocator_checkpoint_next_force_full(struct mm_state *self)
 	// TODO: force full checkpointing when incremental state saving is enabled
 }
 
-array_count_t model_allocator_checkpoint_restore(struct mm_state *self, array_count_t ref_i, memkind_const where)
+array_count_t model_allocator_checkpoint_restore(struct mm_state *self, array_count_t ref_i)
 {
 	array_count_t i = array_count(self->logs) - 1;
 	while(array_get_at(self->logs, i).ref_i > ref_i)
@@ -201,13 +201,13 @@ array_count_t model_allocator_checkpoint_restore(struct mm_state *self, array_co
 	}
 
 	for(array_count_t j = array_count(self->logs) - 1; j > i; --j)
-		configurable_free(array_get_at(self->logs, j).c, where);
+		configurable_free(array_get_at(self->logs, j).c, MEMKIND_LPCKPT);
 
 	array_count(self->logs) = i + 1;
 	return array_get_at(self->logs, i).ref_i;
 }
 
-array_count_t model_allocator_fossil_lp_collect(struct mm_state *self, array_count_t tgt_ref_i, memkind_const where)
+array_count_t model_allocator_fossil_lp_collect(struct mm_state *self, array_count_t tgt_ref_i)
 {
 	array_count_t log_i = array_count(self->logs) - 1;
 	array_count_t ref_i = array_get_at(self->logs, log_i).ref_i;
@@ -228,7 +228,7 @@ array_count_t model_allocator_fossil_lp_collect(struct mm_state *self, array_cou
 	}
 
 	while(j--)
-		configurable_free((array_get_at(self->logs, j).c), where);
+		configurable_free((array_get_at(self->logs, j).c), MEMKIND_LPCKPT);
 
 	array_truncate_first(self->logs, log_i);
 	return ref_i;

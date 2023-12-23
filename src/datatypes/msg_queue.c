@@ -22,6 +22,8 @@
 #include <stdalign.h>
 #include <stdatomic.h>
 
+#include <allocators/common.h>
+
 /// Determine an ordering between two elements in a queue
 #define q_elem_is_before(ma, mb) ((ma).t < (mb).t || ((ma).t == (mb).t && msg_is_before_extended(ma.m, mb.m)))
 
@@ -47,33 +49,33 @@ static __thread heap_declare(struct q_elem) mqp;
 /**
  * @brief Initializes the message queue at the node level
  */
-void msg_queue_global_init(memkind_const where)
+void msg_queue_global_init()
 {
-	queues = configurable_aligned_alloc(CACHE_LINE_SIZE, global_config.n_threads * sizeof(*queues), where);
+	queues = configurable_aligned_alloc(CACHE_LINE_SIZE, global_config.n_threads * sizeof(*queues), MEMKIND_OTHERS);
 }
 
 /**
  * @brief Initializes the message queue for the current thread
  */
-void msg_queue_init(int where)
+void msg_queue_init()
 {
-	heap_init(mqp, where);
+	heap_init(mqp, MEMKIND_THREAD);
 	atomic_store_explicit(&queues[rid].list, NULL, memory_order_relaxed);
 }
 
 /**
  * @brief Finalizes the message queue for the current thread
  */
-void msg_queue_fini(int where)
+void msg_queue_fini()
 {
 	for(array_count_t i = 0; i < heap_count(mqp); ++i)
-		msg_allocator_free(heap_items(mqp)[i].m, where);
+		msg_allocator_free(heap_items(mqp)[i].m);
 
 	heap_fini(mqp);
 
 	struct lp_msg *m = atomic_load_explicit(&queues[rid].list, memory_order_relaxed);
 	while(m != NULL) {
-		msg_allocator_free(m, where);
+		msg_allocator_free(m);
 		m = m->next;
 	}
 }
@@ -81,9 +83,9 @@ void msg_queue_fini(int where)
 /**
  * @brief Finalizes the message queue at the node level
  */
-void msg_queue_global_fini(memkind_const where)
+void msg_queue_global_fini()
 {
-	configurable_free(queues, where);
+	configurable_free(queues, MEMKIND_OTHERS);
 }
 
 /**

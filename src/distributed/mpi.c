@@ -168,7 +168,7 @@ void mpi_control_msg_send_to(enum msg_ctrl_code ctrl, nid_t dest)
  * Control messages are handled by the respective platform handler. Simulation messages are unpacked and put in the
  * queue. Anti-messages are matched and accordingly processed by the message map.
  */
-void mpi_remote_msg_handle(memkind_const where)
+void mpi_remote_msg_handle()
 {
 	while(1) {
 		int pending;
@@ -190,7 +190,7 @@ void mpi_remote_msg_handle(memkind_const where)
 				control_msg_process(c);
 				continue;
 			}
-			msg = msg_allocator_alloc(0, where);
+			msg = msg_allocator_alloc(0);
 			// make sure the deterministic tie-breaking doesn't read uninitialized data
 			msg->m_type = 0;
 			msg->pl_size = 0;
@@ -198,7 +198,7 @@ void mpi_remote_msg_handle(memkind_const where)
 
 			gvt_remote_anti_msg_receive(msg);
 		} else {
-			msg = msg_allocator_alloc(size - offsetof(struct lp_msg, pl) + msg_preamble_size(), where);
+			msg = msg_allocator_alloc(size - offsetof(struct lp_msg, pl) + msg_preamble_size());
 			MPI_Mrecv(msg_remote_data(msg), size, MPI_BYTE, &mpi_msg, MPI_STATUS_IGNORE);
 
 			gvt_remote_msg_receive(msg);
@@ -213,7 +213,7 @@ void mpi_remote_msg_handle(memkind_const where)
  * This routine checks, using the MPI probing mechanism, for new remote messages and it discards them. It is used at
  * simulation completion to clear MPI state.
  */
-void mpi_remote_msg_drain(memkind_const where)
+void mpi_remote_msg_drain()
 {
 	struct lp_msg *msg = NULL;
 	int msg_size = 0;
@@ -239,7 +239,7 @@ void mpi_remote_msg_drain(memkind_const where)
 		}
 
 		if(size > msg_size) {
-			msg = configurable_realloc(msg, size + msg_preamble_size(), where);
+			msg = configurable_realloc(msg, size + msg_preamble_size(), MEMKIND_EVENTS);
 			msg_size = size;
 		}
 		MPI_Mrecv(msg_remote_data(msg), size, MPI_BYTE, &mpi_msg, MPI_STATUS_IGNORE);
@@ -250,7 +250,7 @@ void mpi_remote_msg_drain(memkind_const where)
 			gvt_remote_msg_receive(msg);
 	}
 
-	configurable_free(msg, where);
+	configurable_free(msg, MEMKIND_EVENTS);
 }
 
 /**
@@ -338,7 +338,7 @@ void mpi_blocking_data_send(const void *data, int data_size, nid_t dest)
  *
  * This operation blocks the execution until the sender node actually sends the data with mpi_raw_data_blocking_send().
  */
-void *mpi_blocking_data_rcv(int *data_size_p, nid_t src, memkind_const where)
+void *mpi_blocking_data_rcv(int *data_size_p, nid_t src, xram_memkind_const_t where)
 {
 	MPI_Status status;
 	MPI_Message mpi_msg;

@@ -272,7 +272,7 @@ simtime_t gvt_phase_run(void)
 	return 0.0;
 }
 
-void gvt_msg_drain(memkind_const where)
+void gvt_msg_drain()
 {
 	while(thread_phase != thread_phase_idle) // flush partial gvt algorithm
 		gvt_phase_run();
@@ -284,7 +284,7 @@ void gvt_msg_drain(memkind_const where)
 	for(int i = 0; i < 2; ++i) { // flush both gvt phases
 		gvt_timer = 0;       // this satisfies the timer condition
 		while(!gvt_phase_run())
-			mpi_remote_msg_drain(where);
+			mpi_remote_msg_drain();
 	}
 }
 

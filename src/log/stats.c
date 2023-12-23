@@ -21,6 +21,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include <allocators/common.h>
+
 /// The number of entries to keep in the stdio buffers before flushing a temporary statistics file to disk
 #define STATS_BUFFER_ENTRIES (1024)
 
@@ -94,8 +96,9 @@ void stats_global_time_take(enum stats_global_type this_stat)
 
 /**
  * @brief Initializes the stats subsystem in the node
+ * @param where The type of memory to be used for this data
  */
-void stats_global_init(memkind_const where)
+void stats_global_init()
 {
 	sim_start_ts = timer_new();
 	sim_start_ts_hr = timer_hr_new();
@@ -114,7 +117,7 @@ void stats_global_init(memkind_const where)
 
 	if(mem_stat_setup() < 0)
 		logger(LOG_ERROR, "Unable to extract memory statistics!");
-	stats_tmps = configurable_malloc(global_config.n_threads * sizeof(*stats_tmps), where);
+	stats_tmps = configurable_malloc(global_config.n_threads * sizeof(*stats_tmps), MEMKIND_THREAD);
 }
 
 /**
@@ -142,24 +145,24 @@ void stats_init(void)
  * You may want to call this function with @p out_f set to NULL to flush the pending MPI communications.
  * For details about the binary file format see #stats_file_final_write().
  */
-static void stats_files_receive(FILE *out_f, memkind_const where)
+static void stats_files_receive(FILE *out_f)
 {
 	for(nid_t j = 1; j < n_nodes; ++j) {
 		int buf_size;
-		struct stats_global *sg_p = mpi_blocking_data_rcv(&buf_size, j, where);
+		struct stats_global *sg_p = mpi_blocking_data_rcv(&buf_size, j, MEMKIND_MPIMSG);
 		if(likely(out_f != NULL))
 			file_write_chunk(out_f, sg_p, buf_size);
 		uint64_t iters = sg_p->threads_count + 1; // +1 for node stats
-		configurable_free(sg_p, where);
+		configurable_free(sg_p, MEMKIND_MPIMSG);
 
 		for(uint64_t i = 0; i < iters; ++i) {
-			void *buf = mpi_blocking_data_rcv(&buf_size, j, where);
+			void *buf = mpi_blocking_data_rcv(&buf_size, j, MEMKIND_MPIMSG);
 			int64_t f_size = buf_size;
 			if(likely(out_f != NULL)) {
 				file_write_chunk(out_f, &f_size, sizeof(f_size));
 				file_write_chunk(out_f, buf, buf_size);
 			}
-			configurable_free(buf, where);
+			configurable_free(buf, MEMKIND_MPIMSG);
 		}
 	}
 }
@@ -167,7 +170,7 @@ static void stats_files_receive(FILE *out_f, memkind_const where)
 /**
  * @brief Send the final statistics data of this node to the master node
  */
-static void stats_files_send(memkind_const where)
+static void stats_files_send(xram_memkind_const_t where)
 {
 	stats_glob_cur.max_rss = mem_stat_rss_max_get();
 	stats_glob_cur.timestamps[STATS_GLOBAL_END] = timer_value(sim_start_ts);
@@ -249,7 +252,7 @@ static void stats_files_send(memkind_const where)
  * function #stats_files_receive() deals with the other nodes.
  * TODO add to the file other kind of statistics, for example ROOT-Sim config, machine hardware etc
  */
-static void stats_file_final_write(FILE *out_f, memkind_const where)
+static void stats_file_final_write(FILE *out_f, xram_memkind_const_t where)
 {
 	uint16_t endian_check = 61455U;
 	file_write_chunk(out_f, &endian_check, sizeof(endian_check));
@@ -290,7 +293,7 @@ static void stats_file_final_write(FILE *out_f, memkind_const where)
  * When finalizing this subsystem, the master node dumps his statistics from his temporary files onto the  final binary
  * file. Then, in a distributed setting, he receives the slaves temporary files, dumping their statistics as well.
  */
-void stats_global_fini(memkind_const where)
+void stats_global_fini()
 {
 	if(global_config.stats_file == NULL)
 		return;
@@ -299,15 +302,15 @@ void stats_global_fini(memkind_const where)
 	stats_glob_cur.lps_count = n_lps_node;
 
 	if(nid) {
-		stats_files_send(where);
+		stats_files_send(MEMKIND_OTHERS);
 	} else {
-		FILE *o = file_open("wb", "%s.bin", where, global_config.stats_file);
+		FILE *o = file_open("wb", "%s.bin", MEMKIND_OTHERS, global_config.stats_file);
 		if(unlikely(o == NULL)) {
 			logger(LOG_WARN, "Unable to open statistics file for writing, statistics won't be saved.");
-			stats_files_receive(NULL, where);
+			stats_files_receive(NULL);
 		} else {
-			stats_file_final_write(o, where);
-			stats_files_receive(o, where);
+			stats_file_final_write(o, MEMKIND_OTHERS);
+			stats_files_receive(o);
 			fclose(o);
 		}
 	}
@@ -315,7 +318,7 @@ void stats_global_fini(memkind_const where)
 	for(rid_t i = 0; i < global_config.n_threads; ++i)
 		fclose(stats_tmps[i]);
 
-	configurable_free(stats_tmps, where);
+	configurable_free(stats_tmps, MEMKIND_THREAD);
 	fclose(stats_node_tmp);
 }
 

@@ -21,7 +21,7 @@
  * @param[out] f_size_p a pointer to a variable which will contain with the loaded file size
  * @return a mm_alloc-ed buffer filled in with the file content, or NULL if a read error happened
  */
-void *file_memory_load(FILE *f, int64_t *f_size_p, memkind_const where)
+void *file_memory_load(FILE *f, int64_t *f_size_p, xram_memkind_const_t where)
 {
 	fseek(f, 0, SEEK_END);
 	long f_size = ftell(f); // FIXME: may fail horribly for files bigger than 2 GB
@@ -42,7 +42,7 @@ void *file_memory_load(FILE *f, int64_t *f_size_p, memkind_const where)
  * @param fmt the file name expressed as a printf style format string
  * @param ... the list of additional arguments used in @a fmt (see printf())
  */
-FILE *file_open(const char *open_type, const char *fmt, memkind_const where, ...)
+FILE *file_open(const char *open_type, const char *fmt, xram_memkind_const_t where, ...)
 {
 	va_list args, args_cp;
 	va_start(args, fmt);

@@ -20,16 +20,16 @@ static __thread dyn_array(struct lp_msg *) at_gvt_list = {0};
 /**
  * @brief Initialize the message allocator thread-local data structures
  */
-void msg_allocator_init(memkind_const where)
+void msg_allocator_init()
 {
-	array_init(at_gvt_list, where);
-	array_init(free_list, where);
+	array_init(at_gvt_list, MEMKIND_EVENTS);
+	array_init(free_list, MEMKIND_EVENTS);
 }
 
 /**
  * @brief Finalize the message allocator thread-local data structures
  */
-void msg_allocator_fini(memkind_const where)
+void msg_allocator_fini()
 {
 	while(!array_is_empty(free_list))
 		configurable_free(array_pop(free_list), free_list.where);
@@ -50,13 +50,13 @@ void msg_allocator_fini(memkind_const where)
  * Since this module relies on the member lp_msg.pl_size (see @a msg_allocator_free()), it has writing responsibility
  * on it.
  */
-struct lp_msg *msg_allocator_alloc(unsigned payload_size, memkind_const where)
+struct lp_msg *msg_allocator_alloc(unsigned payload_size)
 {
 	struct lp_msg *ret;
 	if(unlikely(payload_size > MSG_PAYLOAD_BASE_SIZE)) {
-		ret = configurable_malloc(offsetof(struct lp_msg, extra_pl) + (payload_size - MSG_PAYLOAD_BASE_SIZE), where);
+		ret = configurable_malloc(offsetof(struct lp_msg, extra_pl) + (payload_size - MSG_PAYLOAD_BASE_SIZE), MEMKIND_EVENTS);
 	} else if(unlikely(array_is_empty(free_list))) {
-		ret = configurable_malloc(sizeof(struct lp_msg), where);
+		ret = configurable_malloc(sizeof(struct lp_msg), MEMKIND_EVENTS);
 	} else {
 		ret = array_pop(free_list);
 	}
@@ -68,12 +68,12 @@ struct lp_msg *msg_allocator_alloc(unsigned payload_size, memkind_const where)
  * @brief Free a message
  * @param msg a pointer to the message to release
  */
-void msg_allocator_free(struct lp_msg *msg, memkind_const where)
+void msg_allocator_free(struct lp_msg *msg)
 {
 	if(likely(msg->pl_size <= MSG_PAYLOAD_BASE_SIZE))
 		array_push(free_list, msg);
 	else
-		configurable_free(msg, where);
+		configurable_free(msg, MEMKIND_EVENTS);
 }
 
 /**
@@ -89,12 +89,12 @@ void msg_allocator_free_at_gvt(struct lp_msg *msg)
  * @brief Free the committed messages after a new GVT has been computed
  * @param current_gvt the latest value of the GVT
  */
-void msg_allocator_on_gvt(simtime_t current_gvt, memkind_const where)
+void msg_allocator_on_gvt(simtime_t current_gvt)
 {
 	for(array_count_t i = array_count(at_gvt_list); i-- > 0;) {
 		struct lp_msg *msg = array_get_at(at_gvt_list, i);
 		if(msg->dest_t < current_gvt) {
-			configurable_free(msg, where);
+			configurable_free(msg, MEMKIND_EVENTS);
 			array_lazy_remove_at(at_gvt_list, i);
 		}
 	}
@@ -110,4 +110,4 @@ void msg_allocator_on_gvt(simtime_t current_gvt, memkind_const where)
  * @return a new populated message
  */
 extern struct lp_msg *msg_allocator_pack(lp_id_t receiver, simtime_t timestamp, unsigned event_type,
-    const void *payload, unsigned payload_size, memkind_const where);
+    const void *payload, unsigned payload_size);

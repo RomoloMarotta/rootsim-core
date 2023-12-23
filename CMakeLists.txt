@@ -40,21 +40,26 @@ else()
     set(EXTRA_LIBS "")
 endif()
 
+CHECK_LIBRARY_EXISTS(memkind exp "" HAVE_LIB_M)
+if(HAVE_LIB_M)
+    set(EXTRA_LIBS ${EXTRA_LIBS} memkind)
+else()
+    set(EXTRA_LIBS "")
+endif()
+
 if(WIN32)
 # Needed for some system calls
     set(EXTRA_LIBS ${EXTRA_LIBS} psapi)
 endif()
 
 include_directories(mm-nvram/include)
-include_directories(mm-nvram/memkind-install/include)
-add_subdirectory(mm-nvram)
 add_subdirectory(src)
 
 
 # Run the tests
 enable_testing()
-#add_subdirectory(test)
+add_subdirectory(test)
 
 # Generate and inspect documentation
-add_subdirectory(docs)
+#add_subdirectory(docs)
 

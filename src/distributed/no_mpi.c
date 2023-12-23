@@ -58,7 +58,7 @@ void mpi_control_msg_send_to(enum msg_ctrl_code ctrl, nid_t dest)
 
 void mpi_remote_msg_handle(void) {}
 
-void mpi_remote_msg_drain(memkind_const where) {}
+void mpi_remote_msg_drain() {}
 
 void mpi_reduce_sum_scatter(const uint32_t values[n_nodes], uint32_t *result)
 {
@@ -89,7 +89,7 @@ void mpi_blocking_data_send(const void *data, int data_size, nid_t dest)
 	(void)dest;
 }
 
-void *mpi_blocking_data_rcv(int *data_size_p, nid_t src, memkind_const where)
+void *mpi_blocking_data_rcv(int *data_size_p, nid_t src, xram_memkind_const_t where)
 {
 	(void)data_size_p;
 	(void)src;

@@ -57,12 +57,12 @@ bool lp_initialized;
 /**
  * @brief Initialize the global data structures for the LPs
  */
-void lp_global_init(memkind_const where)
+void lp_global_init(xram_memkind_const_t where)
 {
 	lid_node_first = partition_start(nid, n_nodes, lid_to_nid, 0, global_config.lps);
 	n_lps_node = partition_start(nid + 1, n_nodes, lid_to_nid, 0, global_config.lps) - lid_node_first;
 
-	lps = configurable_malloc(sizeof(*lps) * n_lps_node, where);
+	lps = configurable_malloc(sizeof(*lps) * n_lps_node, MEMKIND_LPMETA);
 	lps->where = where;
 	lps -= lid_node_first;
 
@@ -75,8 +75,9 @@ void lp_global_init(memkind_const where)
 
 /**
  * @brief Finalize the global data structures for the LPs
+ * @param where The type of memory to be used for this data
  */
-void lp_global_fini(memkind_const where)
+void lp_global_fini(xram_memkind_const_t where)
 {
 	lps += lid_node_first;
 	configurable_free(lps, where);
@@ -85,7 +86,7 @@ void lp_global_fini(memkind_const where)
 /**
  * @brief Initialize the data structures of the LPs hosted in the calling thread
  */
-void lp_init(memkind_const where)
+void lp_init()
 {
 	lid_thread_first = partition_start(rid, global_config.n_threads, lid_to_rid, lid_node_first, n_lps_node);
 	lid_thread_end = partition_start(rid + 1, global_config.n_threads, lid_to_rid, lid_node_first, n_lps_node);
@@ -93,17 +94,17 @@ void lp_init(memkind_const where)
 	for(uint64_t i = lid_thread_first; i < lid_thread_end; ++i) {
 		struct lp_ctx *lp = &lps[i];
 
-		model_allocator_lp_init(&lp->mm_state, where);
+		model_allocator_lp_init(&lp->mm_state);
 		lp->state_pointer = NULL;
 		lp->fossil_epoch = 0;
 		lp->where = lps[i].where;
 
 		current_lp = lp;
-		lp->rng_ctx = rs_malloc(sizeof(*lp->rng_ctx), where);
+		lp->rng_ctx = rs_malloc(sizeof(*lp->rng_ctx));
 		random_lib_lp_init(i, lp->rng_ctx);
 
 		auto_ckpt_lp_init(&lp->auto_ckpt);
-		process_lp_init(lp, where);
+		process_lp_init(lp);
 		termination_lp_init(lp);
 	}
 }
@@ -111,13 +112,13 @@ void lp_init(memkind_const where)
 /**
  * @brief Finalize the data structures of the LPs hosted in the calling thread
  */
-void lp_fini(memkind_const where)
+void lp_fini()
 {
 	for(uint64_t i = lid_thread_first; i < lid_thread_end; ++i) {
 		struct lp_ctx *lp = &lps[i];
 
-		process_lp_fini(lp, where);
-		model_allocator_lp_fini(&lp->mm_state, where);
+		process_lp_fini(lp);
+		model_allocator_lp_fini(&lp->mm_state);
 	}
 
 	current_lp = NULL;

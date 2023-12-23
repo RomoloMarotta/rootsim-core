@@ -19,6 +19,7 @@
 #include <stdlib.h>
 
 #include <mm_nvram.h>
+#include <allocators/common.h>
 
 /**
  * @brief A version of the stdlib aligned_alloc() used internally

@@ -17,15 +17,15 @@
 #include <log/stats.h>
 #include <mm/msg_allocator.h>
 
-static void worker_thread_init(rid_t this_rid, int where)
+static void worker_thread_init(rid_t this_rid)
 {
 	rid = this_rid;
 	stats_init();
 	auto_ckpt_init();
-	msg_allocator_init(where);
-	msg_queue_init(where);
+	msg_allocator_init();
+	msg_queue_init();
 	sync_thread_barrier();
-	lp_init(where);
+	lp_init();
 
 	if(sync_thread_barrier()) {
 		mpi_node_barrier();
@@ -38,9 +38,9 @@ static void worker_thread_init(rid_t this_rid, int where)
 	}
 }
 
-static void worker_thread_fini(int where)
+static void worker_thread_fini()
 {
-	gvt_msg_drain(where);
+	gvt_msg_drain();
 
 	if(sync_thread_barrier()) {
 		stats_dump();
@@ -50,62 +50,60 @@ static void worker_thread_fini(int where)
 		mpi_node_barrier();
 	}
 
-	lp_fini(where);
-	msg_queue_fini(where);
+	lp_fini();
+	msg_queue_fini();
 	sync_thread_barrier();
-	msg_allocator_fini(where);
+	msg_allocator_fini();
 }
 
 static thrd_ret_t THREAD_CALL_CONV parallel_thread_run(void *rid_arg)
 {
 
-	where = DRAM_MEM;
-	worker_thread_init((uintptr_t)rid_arg, where);
+	worker_thread_init((uintptr_t)rid_arg);
 
 	while(likely(termination_cant_end())) {
-		mpi_remote_msg_handle(where);
+		mpi_remote_msg_handle();
 
 		unsigned i = 64;
 		while(i--)
-			process_msg(where);
+			process_msg();
 
 		simtime_t current_gvt = gvt_phase_run();
 		if(unlikely(current_gvt != 0.0)) {
 			termination_on_gvt(current_gvt);
 			auto_ckpt_on_gvt();
 			fossil_on_gvt(current_gvt);
-			msg_allocator_on_gvt(current_gvt, where);
+			msg_allocator_on_gvt(current_gvt);
 			stats_on_gvt(current_gvt);
 		}
 	}
 
-	worker_thread_fini(where);
+	worker_thread_fini();
 
 	return THREAD_RET_SUCCESS;
 }
 
-static void parallel_global_init(memkind_const where)
+static void parallel_global_init()
 {
 
-	stats_global_init(where);
-	lp_global_init(where);
-	msg_queue_global_init(where); ///aligned
+	stats_global_init(MEMKIND_THREAD);
+	lp_global_init(MEMKIND_LPMETA);
+	msg_queue_global_init(MEMKIND_EVENTS); ///aligned
 	termination_global_init();
 	gvt_global_init();
 }
 
-static void parallel_global_fini(memkind_const where)
+static void parallel_global_fini()
 {
-	msg_queue_global_fini(where); ///aligned
-	lp_global_fini(where);
-	stats_global_fini(where);
+	msg_queue_global_fini(MEMKIND_EVENTS); ///aligned
+	lp_global_fini(MEMKIND_LPMETA);
+	stats_global_fini(MEMKIND_OTHERS);
 }
 
 int parallel_simulation(void)
 {
 	logger(LOG_INFO, "Initializing parallel simulation");
-	where = DRAM_MEM;
-	parallel_global_init(where);
+	parallel_global_init();
 	stats_global_time_take(STATS_GLOBAL_INIT_END);
 
 	thr_id_t thrs[global_config.n_threads];
@@ -126,8 +124,7 @@ int parallel_simulation(void)
 		thread_wait(thrs[i], NULL);
 
 	stats_global_time_take(STATS_GLOBAL_FINI_START);
-	where = DRAM_MEM;
-	parallel_global_fini(where);
+	parallel_global_fini();
 
 	return 0;
 }

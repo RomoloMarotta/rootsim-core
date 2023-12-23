@@ -35,7 +35,7 @@ struct lp_ctx {
 	/// The memory allocator state of this LP
 	struct mm_state mm_state;
 	/// allocation policy
-	memkind_const where;
+	xram_memkind_const_t where;
 };
 
 /**
@@ -68,8 +68,8 @@ extern bool lp_initialized;
 #define lp_initialized_set()
 #endif
 
-extern void lp_global_init(memkind_const);
-extern void lp_global_fini(memkind_const);
+extern void lp_global_init(xram_memkind_const_t);
+extern void lp_global_fini(xram_memkind_const_t);
 
-extern void lp_init(int);
-extern void lp_fini(int);
+extern void lp_init();
+extern void lp_fini();

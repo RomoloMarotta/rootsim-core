@@ -4,10 +4,6 @@
 #include <mm_nvram.h>
 
 
-#define WRAP_TO_STD 0
-#define WRAP_TO_REA 1
-#define WRAP_TO_MKD 2
-
 #ifndef MEMKIND_EVENTS
 #define MEMKIND_EVENTS DRAM_MEM
 #endif
@@ -32,6 +28,9 @@
 #define MEMKIND_LPMETA DRAM_MEM
 #endif
 
+#ifndef MEMKIND_MPIMSG
+#define MEMKIND_MPIMSG MEMKIND_OTHERS
+#endif
 
 
 

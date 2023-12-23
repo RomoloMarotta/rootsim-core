@@ -29,7 +29,7 @@ typedef uint_least32_t array_count_t;
 		type *items;                                                                                           \
 		array_count_t count;                                                                                   \
 		array_count_t capacity;                                                                                \
-		memkind_const where; 																								\
+		xram_memkind_const_t where; 																								\
 	}
 
 /**
@@ -53,6 +53,13 @@ typedef uint_least32_t array_count_t;
  * @param self The target dynamic array
  */
 #define array_capacity(self) ((self).capacity)
+
+
+/**
+ * @brief Gets the current kind of memory
+ * @param self The target dynamic array
+ */
+#define array_where(self) ((self).where)
 
 /**
  * @brief Gets the last element of a dynamic array
@@ -79,13 +86,6 @@ typedef uint_least32_t array_count_t;
 #define array_is_empty(self) (array_count(self) == 0)
 
 /**
- * @brief Sets where the array should be allocated
- * @param self The target dynamic array
- * @oaram where The allocation policy 
- */
-#define array_set_alloc_policy(self, where) (self.where == where)
-
-/**
  * @brief Returns where the array is allocated
  * @param self The target dynamic array
  */
@@ -98,9 +98,9 @@ typedef uint_least32_t array_count_t;
 #define array_init(self, where)                                                                                               \
 	__extension__({                                                                                                \
 		array_capacity(self) = INIT_SIZE_ARRAY;                                                                \
-		array_items(self) = configurable_malloc(array_capacity(self) * sizeof(*array_items(self)), where);                       \
+		array_items(self) = configurable_malloc(array_capacity(self) * sizeof(*array_items(self)), (where));                       \
 		array_count(self) = 0;                                                                                 \
-		array_set_alloc_policy(self, where);																		\
+		array_where(self) = where;																		\
 	})
 
 /**
