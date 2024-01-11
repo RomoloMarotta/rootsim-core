@@ -94,9 +94,9 @@ void deallocation(unsigned int me, lp_state_type *pointer, int ch, simtime_t lvt
 				c->prev->next = c->next;
 		}
 		RESET_CHANNEL(pointer, ch);
-		free(c->sir_data);
+		rs_free(c->sir_data);
 
-		free(c);
+		rs_free(c);
 	} else {
 		printf("(%d) Unable to deallocate on %p, channel is %d at time %f\n", me, c, ch, lvt);
 		abort();
@@ -135,7 +135,7 @@ int allocation(lp_state_type *pointer) {
 
 		SET_CHANNEL(pointer,index);
 
-		c = (channel*)malloc(sizeof(channel));
+		c = (channel*)rs_malloc(sizeof(channel));
 		if(c == NULL){
 			printf("malloc error: unable to allocate channel!\n");
 			exit(-1);
@@ -144,7 +144,7 @@ int allocation(lp_state_type *pointer) {
 		c->next = NULL;
 		c->prev = pointer->channels;
 		c->channel_id = index;
-		c->sir_data = (sir_data_per_cell*)malloc(sizeof(sir_data_per_cell));
+		c->sir_data = (sir_data_per_cell*)rs_malloc(sizeof(sir_data_per_cell));
 		if(c->sir_data == NULL){
 			printf("malloc error: unable to allocate SIR data!\n");
 			exit(-1);
@@ -290,122 +290,6 @@ lp_id_t FindReceiver(int topology, lp_id_t current_lp) {
 
 			break;
 
-
-		case TOPOLOGY_SQUARE:
-
-			#define N	0
-			#define W	1
-			#define S	2
-			#define E	3
-
-			// Convert linear coords to square coords
-			edge = sqrt(conf.lps);
-			x = current_lp % edge;
-			y = current_lp / edge;
-
-			// Sanity check!
-			if(edge * edge != conf.lps) {
-				printf("TOPO abort!!\n");
-		abort();
-		return 0;
-			}
-
-
-			// Very simple case!
-			if(conf.lps == 1) {
-				receiver = current_lp;
-				break;
-			}
-
-			// Find a random neighbour
-			do {
-
-				receiver = 4 * Random();
-				if(receiver == 4) {
-					receiver = 3;
-				}
-
-				switch(receiver) {
-					case N:
-						nx = x;
-						ny = y - 1;
-						break;
-					case S:
-						nx = x;
-						ny = y + 1;
-						break;
-					case E:
-						nx = x + 1;
-						ny = y;
-						break;
-					case W:
-						nx = x - 1;
-						ny = y;
-						break;
-					default:
-				printf("TOPO abort!!\n");
-		abort();
-				}
-
-			// We don't check is nx < 0 || ny < 0, as they are unsigned and therefore overflow
-			} while(nx >= edge || ny >= edge);
-
-			// Convert back to linear coordinates
-			receiver = (ny * edge + nx);
-
-			#undef N
-			#undef W
-			#undef S
-			#undef E
-
-			break;
-
-
-
-
-		case TOPOLOGY_BIDRING:
-
-			u = Random();
-
-			if (u < 0.5) {
-				receiver = current_lp - 1;
-			} else {
-				receiver= current_lp + 1;
-			}
-
-   			if (receiver == -1) {
-				receiver = conf.lps - 1;
-			}
-
-			// Can't be negative from now on
-			if ((unsigned int)receiver == conf.lps) {
-				receiver = 0;
-			}
-
-			break;
-
-
-
-		case TOPOLOGY_RING:
-
-			receiver= current_lp + 1;
-
-			if ((unsigned int)receiver == conf.lps) {
-				receiver = 0;
-			}
-
-			break;
-
-
-		case TOPOLOGY_STAR:
-
-			if (current_lp == 0) {
-				receiver = (int)(conf.lps * Random());
-			} else {
-				receiver = 0;
-			}
-
-			break;
 
 		default:
 			receiver =-1;

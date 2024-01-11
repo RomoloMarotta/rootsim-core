@@ -28,7 +28,7 @@
 #define LOOKAHEAD 0.0
 #endif
 
-#define CLOCKS_PER_US ((unsigned long long) 2688.197592)
+#define CLOCKS_PER_US ((unsigned long long) 2200.0)
 
 
 // This is the events' payload which is exchanged across LPs
@@ -115,7 +115,7 @@ void ProcessEvent(lp_id_t me, simtime_t now, unsigned event_type, _unused const 
 			break;
 
 		case LP_INIT:
-	      state_ptr = malloc(sizeof(lp_state_type));
+	      state_ptr = rs_malloc(sizeof(lp_state_type));
 				if(state_ptr == NULL) {
 					printf("malloc failed\n");
 					exit(-1);

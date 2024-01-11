@@ -166,7 +166,7 @@ void ProcessEvent(lp_id_t me, simtime_t now, unsigned event_type, const void *ev
 	simtime_t handoff_time;
 	simtime_t timestamp = 0;
 
-	event_content_type *event_content = evt_ptr;
+	const event_content_type *event_content = evt_ptr;
 	lp_state_type *state;
 	state = (lp_state_type*)ptr;
 
@@ -191,7 +191,7 @@ void ProcessEvent(lp_id_t me, simtime_t now, unsigned event_type, const void *ev
 
 		case LP_INIT:
 			// Initialize the LP's state
-			state = (lp_state_type *)malloc(sizeof(lp_state_type));
+			state = (lp_state_type *)rs_malloc(sizeof(lp_state_type));
 			if (state == NULL){
 				printf("Out of memory!\n");
 				exit(EXIT_FAILURE);
@@ -256,7 +256,7 @@ void ProcessEvent(lp_id_t me, simtime_t now, unsigned event_type, const void *ev
 			state->channel_counter = state->channels_per_cell;
 
 			// Setup channel state
-			state->channel_state = malloc(sizeof(unsigned int) * 2 * (state->channels_per_cell / BITS + 1));
+			state->channel_state = rs_malloc(sizeof(unsigned int) * 2 * (state->channels_per_cell / BITS + 1));
 			for (w = 0; w < state->channel_counter / (sizeof(int) * 8) + 1; w++)
 				state->channel_state[w] = 0;
 
@@ -326,6 +326,7 @@ void ProcessEvent(lp_id_t me, simtime_t now, unsigned event_type, const void *ev
 				} else {
 					new_event_content.cell = FindReceiver(TOPOLOGY_HEXAGON, me);
 					ScheduleNewEvent(me, handoff_time, HANDOFF_LEAVE, &new_event_content, sizeof(new_event_content));
+//					ScheduleNewEvent(me, handoff_time, END_CALL, &new_event_content, sizeof(new_event_content));
 				}
 			}
 
@@ -365,6 +366,8 @@ void ProcessEvent(lp_id_t me, simtime_t now, unsigned event_type, const void *ev
 
 			state->channel_counter++;
 			state->leaving_handoffs++;
+//                       if((now+HANDOFF_SHIFT)>= event_content->call_term_time){
+//printf("trying to handoff an ended call\n");abort();}
 			deallocation(me, state, event_content->channel, now);
 
 			new_event_content.call_term_time =  event_content->call_term_time;

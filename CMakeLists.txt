@@ -11,6 +11,8 @@ set(CMAKE_C_VISIBILITY_PRESET hidden)
 # set(CMAKE_UNITY_BUILD ON)
 # set(CMAKE_UNITY_BUILD_BATCH_SIZE 128)
 
+set(CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+
 include(CheckIPOSupported)
 check_ipo_supported(RESULT SUPPORTS_IPO OUTPUT ERROR_IPO)
 if(SUPPORTS_IPO)
@@ -30,7 +32,7 @@ if(NOT DISABLE_MPI)
     find_package(MPI REQUIRED)
 endif()
 
-add_compile_options(-Wall -Wextra -pedantic)
+add_compile_options(-Wall -Wextra -pedantic ${CMAKE_CXX_FLAGS})
 
 include(CheckLibraryExists)
 CHECK_LIBRARY_EXISTS(m exp "" HAVE_LIB_M)
